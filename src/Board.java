@@ -3,126 +3,138 @@ import java.io.FileReader;
 import java.io.IOException;
 
 public class Board {
+    // Arrays to represent rows, columns, and boxes (sub-grids of the board)
     private Row[] rows;
     private Column[] columns;
     private Box[] boxes;
-    private int boardSize;
-    private boolean validBoard;
+    private int boardSize;       // Size of the board (e.g., 9 for a 9x9 Sudoku)
+    private boolean validBoard;  // Tracks if the board is valid
 
+    // Constructor: initializes the board from a file
     public Board(String fileName){
         validBoard = true;
         setBoard(fileName);
-        
     }
 
+    // Returns the size of the board
     public int getBoardSize(){
         return boardSize;
     }
 
+    // Retrieves a specific row by index (1-based indexing)
     public Row getRow(int rowIndex){
         return rows[rowIndex-1];
     }
 
+    // Retrieves a specific column by index (1-based indexing)
     public Column getColumn(int columnIndex){
         return columns[columnIndex-1];
     }
 
+    // Retrieves a specific box (sub-grid) based on row and column
     public Box getBox(int row, int column){
-        int yCord = row/(int) Math.sqrt(getBoardSize());
-        int xCord = column/ (int) Math.sqrt(getBoardSize());
-        int location = xCord + (yCord * (int) Math.sqrt(getBoardSize()));
+        int boxSize = (int) Math.sqrt(getBoardSize());
+        int boxRow = (row - 1) / boxSize;    
+        int boxCol = (column - 1) / boxSize; 
+        int location = boxCol + (boxRow * boxSize);
         return boxes[location];
     }
 
+    // Sets a value at a specific row and column, and updates row, column, and box structures
     public void setValue(int row, int column, int value){
-        getRow(row).setValue(column-1, value);
-        getColumn(column).setValue(row-1, value);
+         getRow(row).setValue(column, value);
+        getColumn(column).setValue(row, value);
 
-    
-        row = (row-1)%(int) Math.sqrt(getBoardSize());
-        column = (column-1)%(int) Math.sqrt(getBoardSize());
-        int location = column + (row * (int) Math.sqrt(getBoardSize()));
-        getBox(row, column).setValue(location, value);
+        int boxSize = (int) Math.sqrt(getBoardSize());
+        // compute which box (0-based box coords)
+        int boxRow = (row - 1) / boxSize;
+        int boxCol = (column - 1) / boxSize;
+        int boxIndex = boxCol + (boxRow * boxSize);
+
+        // index inside that box (0-based)
+        int inBoxRow = (row - 1) % boxSize;
+        int inBoxCol = (column - 1) % boxSize;
+        int location = inBoxCol + (inBoxRow * boxSize); // 0-based
+
+        // Box API accepts 1-based index
+        boxes[boxIndex].setValue(location + 1, value);
     }
 
+    // Prints the current state of the board to the console
     public void printBoard(){
         for (int i = 0; i < getBoardSize(); i++) {
             for (int j = 0; j < getBoardSize(); j++) {
-                System.out.print(getRow(i+1).getValue(j) + " ");
-                
+                System.out.print(getRow(i+1).getValue(j+1) + " ");
             }
             System.out.println();
         }
     }
 
-
-    public void setBoard(String fileName){
-        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
-            String line;
-            while ((line = reader.readLine()) != null && validBoard) {
-                AddToBoard(line);
-            }
-
-        } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
+    // Reads the board configuration from a file
+public void setBoard(String fileName) {
+    try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+        String line;
+        while ((line = reader.readLine()) != null && validBoard) {
+            addToBoard(line.trim());
         }
-
-        if(validBoard){
-            printBoard();
-        }
+    } catch (IOException e) {
+        System.err.println("Error reading file: " + e.getMessage());
     }
 
-    public void AddToBoard(String line){
-        String[] numbersChar = {"0", "0", "0"};
-        char[] chars = new char[2];
-        int numberIndex = 0;
-        int charIndex = 0;
-        for (int i = 0; i < line.length(); i++) {
-            
-            if (line.charAt(i) == ' ') {
-            }
-            else if (Character.isDigit(line.charAt(i))){
-                numbersChar[numberIndex] += Character.toString(line.charAt(i));
-            }
-            else if (line.charAt(i) == ',') {
-                chars[charIndex] = line.charAt(i);
-                numberIndex++;
-                charIndex++;
-            }
-            else if (line.charAt(i) == 'x') {
-                chars[charIndex] = line.charAt(i);
-                numberIndex = 2;
-            }
-            else{
-                System.out.println("Error?");
-            }
-            
-        }
-        int[] numbers = new int[3];
-        for (int i = 0; i < numbersChar.length; i++) {
-            numbers[i] = Integer.parseInt(numbersChar[i]);
-        }
-        if (numbers[0] == numbers[2] && chars[0] == 'x') {
-            boardSize = numbers[0];
+    // Print the board only if it is valid
+    if (validBoard) {
+        printBoard();
+    }
+}
+
+// Parses a line of input and adds it to the board
+public void addToBoard(String line) {
+    if (line.isEmpty()) return; // Ignore empty lines
+
+    // Handle board size input (e.g., "9x9")
+    if (line.contains("x")) {
+        String[] parts = line.split("x");
+        if (parts.length == 2 && parts[0].equals(parts[1])) {
+            boardSize = Integer.parseInt(parts[0]);
             createRows(boardSize);
-            System.out.println(boardSize);
+            System.out.println("Board size set to: " + boardSize);
+        } else {
+            System.out.println("Invalid board size format: " + line);
+            validBoard = false;
         }
-
-        if(chars[0] == ',' && chars[1] == ','){
-            System.out.println("Trying to put onto board: ");
-            System.out.println("Row: " + (numbers[0]-1) + "\nColumn: " + (numbers[1]-1));
-            System.out.println("Value: " + getRow(numbers[0]).getValue(numbers[1]-1));
-            if(getRow(numbers[0]).getValue(numbers[1]-1) != 0){
-                validBoard = false;
-                System.out.println("Invalid Board");
-            }
-            else{
-                setValue(numbers[0], numbers[1], numbers[2]);
-            }
-        }
-
+        return;
     }
 
+    // Handle cell input (format: row,column,value)
+    String[] parts = line.split(",");
+    if (parts.length == 3) {
+        try {
+            int row = Integer.parseInt(parts[0]);
+            int column = Integer.parseInt(parts[1]);
+            int value = Integer.parseInt(parts[2]);
+
+            System.out.printf("Trying to put onto board: Row %d, Column %d, Value %d%n", row , column, value);
+
+            boolean validPlacement = isValidPlacement(row, column, value);
+            if (getRow(row).getValue(column ) != 0 || !validPlacement) {
+                validBoard = false;
+                System.out.println("Invalid placement — board rejected.");
+            } else {
+                setValue(row, column, value);
+                getRow(row).setOriginalValue(column, true);
+
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Invalid number format in line: " + line);
+            validBoard = false;
+        }
+    } else {
+        System.out.println("Invalid line format: " + line);
+        validBoard = false;
+    }
+}
+
+    // Creates empty rows, columns, and boxes based on board size
     private void createRows(int boardSize){
         rows = new Row[boardSize];
         columns = new Column[boardSize];
@@ -133,5 +145,29 @@ public class Board {
             columns[i] = new Column(boardSize);
             boxes[i] = new Box(boardSize);
         }
+    }
+
+    // Checks if placing a value at (row, column) is valid according to Sudoku rules
+    public boolean isValidPlacement(int row, int column, int value){
+
+        // Check row, column, and box for conflicts
+        for (int i = 0; i < getBoardSize(); i++) {
+            //System.out.println("Is " + getRow(row).getValue(i) + " Equal to " + value);
+            if(getRow(row).getValue(i+1) == value){
+                //System.out.println("Yes");
+                return false;
+            }
+            //System.out.println("Is " + getColumn(column).getValue(i) + " Equal to " + value);
+            if(getColumn(column).getValue(i+1) == value){
+                //System.out.println("Yes");
+                return false;
+            }
+            //System.out.println("Is " + getBox(row-1, column-1).getValue(i) + " Equal to " + value);
+            if(getBox(row, column).getValue(i+1) == value){
+                //System.out.println("Yes");
+                return false;
+            }
+        }
+        return true;
     }
 }

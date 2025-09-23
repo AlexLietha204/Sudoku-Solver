@@ -6,11 +6,10 @@ public class Column {
     }
 
     public int getValue(int index){
-        System.out.println("Getting Column Value: " + column[index] + "At index " + index);
-        return column[index];
+        return column[index-1];
     }
     public void setValue(int index, int value){
-        column[index] = value;
+        column[index-1] = value;
     }
     
 } 

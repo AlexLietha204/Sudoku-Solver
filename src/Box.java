@@ -6,11 +6,10 @@ public class Box {
     }
 
     public int getValue(int index){
-        System.out.println("Getting Box Value: " + box[index] + "At index " + index);
-        return box[index];
+        return box[index-1];
     }
     public void setValue(int index, int value){
-        box[index] = value;
+        box[index-1] = value;
     }
     
 } 
